@@ -1,14 +1,21 @@
-# Use a lightweight OpenJDK 17 image
-FROM eclipse-temurin:17-jdk-jammy
-
-# Set working directory inside container
+# --- STAGE 1: Build the JAR ---
+FROM gradle:7.6-jdk17 AS build
 WORKDIR /app
+# Copy only the gradle files first (better for caching)
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle .
+COPY settings.gradle .
+COPY src src
 
-# Copy the built jar from Gradle build folder
-COPY build/libs/web-api-product-0.0.1-SNAPSHOT.jar app.jar
+# Build the application (skipping tests to save time on Render)
+RUN ./gradlew build -x test --no-daemon
 
-# Expose port (Spring Boot default: 8080)
+# --- STAGE 2: Run the JAR ---
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+# This line finds the JAR created in the build stage and copies it here
+COPY --from=build /app/build/libs/web-api-product-0.0.1-SNAPSHOT.jar app.jar
+
 EXPOSE 8080
-
-# Run the jar
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
