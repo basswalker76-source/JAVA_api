@@ -2,33 +2,29 @@
 FROM gradle:8.5-jdk21 AS build
 WORKDIR /app
 
-# 1. Copy the wrapper and configuration files
+# 1. Copy only files needed to download dependencies
 COPY gradlew .
 COPY gradle gradle
 COPY build.gradle .
 COPY settings.gradle .
 
-# 2. FIX: Give execution permission to the Gradle wrapper
+# 2. Pre-download dependencies (this layer is cached)
 RUN chmod +x gradlew
+RUN ./gradlew dependencies --no-daemon
 
-# 3. Copy the source code
+# 3. Now copy source and build
 COPY src src
-
-# 4. Build the JAR file (ignoring tests to speed up Render builds)
 RUN ./gradlew build -x test --no-daemon
 
 # --- STAGE 2: Run Stage ---
 FROM eclipse-temurin:21-jdk-jammy
 WORKDIR /app
 
-# 5. FIX: Use a wildcard (*.jar) to safely pick up the built jar 
-# and avoid "file not found" errors due to long filenames
-COPY --from=build /app/build/libs/web-api-product-0.0.1-SNAPSHOT.jar app.jar
+# 4. Copy the jar (using wildcard to be safe)
+COPY --from=build /app/build/libs/*SNAPSHOT.jar app.jar
 
-# 6. Expose the port Spring Boot uses
+# 5. Render uses the PORT env var
 EXPOSE 8080
 
-# 7. Start the application
-
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
+# 6. Use shell form to allow environment variable expansion
+ENTRYPOINT java -jar app.jar --server.port=${PORT:-8080}
