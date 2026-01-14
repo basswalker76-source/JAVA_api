@@ -1,30 +1,21 @@
-# --- STAGE 1: Build Stage ---
-FROM gradle:8.5-jdk21 AS build
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-# 1. Copy only files needed to download dependencies
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
+# Copy everything
+COPY . .
 
-# 2. Pre-download dependencies (this layer is cached)
+# Fix permissions
 RUN chmod +x gradlew
-RUN ./gradlew dependencies --no-daemon
 
-# 3. Now copy source and build
-COPY src src
-RUN ./gradlew build -x test --no-daemon
+# Run the build
+# Added -Porg.gradle.java.installations.auto-download=false to prevent toolchain errors
+RUN ./gradlew clean bootJar -x test -Porg.gradle.java.installations.auto-download=false
 
-# --- STAGE 2: Run Stage ---
-FROM eclipse-temurin:21-jdk-jammy
+# Stage 2: Run
+# Match the Java version here too (21 or 17)
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-
-# 4. Copy the jar (using wildcard to be safe)
-COPY --from=build /app/build/libs/*SNAPSHOT.jar app.jar
-
-# 5. Render uses the PORT env var
+COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8080
-
-# 6. Use shell form to allow environment variable expansion
-ENTRYPOINT java -jar app.jar --server.port=${PORT:-8080}
+ENTRYPOINT ["java", "-jar", "app.jar"]
