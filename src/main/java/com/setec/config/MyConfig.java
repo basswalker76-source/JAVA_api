@@ -27,7 +27,7 @@ public class MyConfig implements WebMvcConfigurer{
         // Explicitly define the server URL for Swagger UI API calls
     
         Server productionServer = new Server();
-        productionServer.setUrl("https://skyer-sokphonai-api.onrender.com"); 
+        productionServer.setUrl("https://java-cafe.onrender.com"); 
         productionServer.setDescription("Production Server");
 
         // You can add other servers (e.g., a local HTTP one for development)
