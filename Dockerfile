@@ -29,4 +29,7 @@ COPY --from=build /app/build/libs/web-api-product-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 
 # 7. Start the application
+
+
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
